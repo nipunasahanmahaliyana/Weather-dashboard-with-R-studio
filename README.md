@@ -31,7 +31,7 @@ This is a Shiny web application that provides weather details and forecasts base
 
 ### Used API's
 
--Visual Crossing API
--OpenWeatherMap API
+- Visual Crossing API
+- OpenWeatherMap API
 
 
