@@ -22,7 +22,7 @@ This is a Shiny web application that provides weather details and forecasts base
 
 ### Prerequisites
 
-- R (version x.x.x)
+- R 
 - Shiny library
 - httr library
 - shinydashboard library
