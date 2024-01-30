@@ -4,6 +4,7 @@ library(shinydashboard)
 library(plotly)
 library(httr)
 library(jsonlite)
+library(RMySQL)
 
 # Function to fetch weather data from the API
 getWeatherData <- function(location, startDate, endDate) {
@@ -23,7 +24,8 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       textInput("city", "Enter City:", ""),
-      style = "background-color: #337ab7;",
+      style = "background-color: orange;",
+      tags$style(HTML("body {background-color: #f0f0f0;}")),  # Set your desired background color
       dateRangeInput("dateRange", "Select Date Range:",
                      start = Sys.Date()+1,
                      min = Sys.Date()+1,
@@ -64,6 +66,23 @@ server <- function(input, output) {
   output$inputCity <- renderText({
     paste("City: ", input$city)
   })
+  
+  # Connect to MySQL database
+  con <- dbConnect(MySQL(), user = "root", password = "",
+                   dbname = "weather_db", host = "localhost")
+  
+  # Reactive function to fetch weather data
+  weather_data <- reactive({
+    getWeatherData(input$city, format(input$dateRange[1]), format(input$dateRange[2]))
+  })
+  
+  # Reactive function to filter data based on selected date range
+  filtered_data <- reactive({
+    subset(weather_data(), as.Date(datetime) >= input$dateRange[1] &
+             as.Date(datetime) <= input$dateRange[2])
+  })
+  
+  
   # Reactive function to fetch weather data
   weather_data <- reactive({
     getWeatherData(input$city, format(input$dateRange[1]), format(input$dateRange[2]))
@@ -130,6 +149,23 @@ server <- function(input, output) {
         sunset <- as.POSIXct(weather_data$sys$sunset, origin = "1970-01-01", tz = "UTC")
         weather_icon <- weather_data$weather[[1]]$icon
         
+        # Insert data into the weather_data table
+        dbWriteTable(con, "weather_data", data.frame(
+          city = input$city,
+          date = as.Date(Sys.time()),
+          temperature = temperature,
+          feels_like = feels_like,
+          temp_min = temp_min,
+          temp_max = temp_max,
+          pressure = pressure,
+          humidity = humidity,
+          wind_speed = wind_speed,
+          clouds = clouds,
+          description = description,
+          sunrise = sunrise,
+          sunset = sunset
+        ),overwrite = TRUE)
+        
         # Display weather details
         output$temperature <- renderText(paste("Temperature: ", temperature, "°C"))
         output$feelsLike <- renderText(paste("Feels Like: ", feels_like, "°C"))
@@ -163,6 +199,10 @@ server <- function(input, output) {
         output$weatherIcon <- renderImage({})
       }
     }
+  })
+  # Close the database connection on app exit
+  onStop(function() {
+    dbDisconnect(con)
   })
 }
 
